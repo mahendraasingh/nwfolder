@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html>
+
+
+<head>
+
+<title>
+Dashboard
+</title>
+
+
+<link rel="stylesheet" href="css/style.css">
+
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<h2>
+Dashboard
+</h2>
+
+
+<h3 id="welcome"></h3>
+
+
+<p id="role"></p>
+
+
+
+<button onclick="openAdmin()">
+
+Admin Panel
+
+</button>
+
+
+
+<button onclick="logout()">
+
+Logout
+
+</button>
+
+
+</div>
+
+
+
+<script>
+
+
+let token =
+localStorage.getItem("jwtToken");
+
+
+
+// Token checking
+
+if(token==null){
+
+window.location="index.html";
+
+}
+
+
+
+
+// Decode JWT payload
+
+
+let payload =
+JSON.parse(
+atob(token.split(".")[1])
+);
+
+
+
+document.getElementById("welcome")
+.innerHTML=
+"Welcome "+payload.username;
+
+
+
+document.getElementById("role")
+.innerHTML=
+"Your Role : "+payload.role;
+
+
+
+
+function logout(){
+
+
+localStorage.removeItem("jwtToken");
+
+
+window.location="index.html";
+
+
+}
+
+
+
+
+
+function openAdmin(){
+
+
+if(payload.role==="admin"){
+
+
+window.location="admin.html";
+
+
+}
+
+else{
+
+
+alert(
+"Access Denied! Only Admin can access this page"
+);
+
+
+}
+
+
+}
+
+
+
+</script>
+
+
+</body>
+
+
+</html>
