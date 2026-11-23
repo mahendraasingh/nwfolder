@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Recon Dossier: {{ scan.domain }} | Reconnaissance Information Organizer{% endblock %}
+
+{% block content %}
+<!-- Target Overview Hero -->
+<div class="target-hero">
+    <div>
+        <div class="target-domain-title">
+            <span>{{ scan.domain }}</span>
+            <span class="badge {% if scan.status == 'Success' %}badge-success{% elif scan.status == 'Partial' %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ scan.status }}
+            </span>
+        </div>
+        <div class="target-meta">
+            <span><strong>Dossier ID:</strong> #{{ scan.id }}</span>
+            <span><strong>Primary IP:</strong> <span class="mono text-neon-green">{{ scan.primary_ip }}</span></span>
+            <span><strong>Scanned:</strong> {{ scan.scan_date }}</span>
+        </div>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{{ url_for('export_scan', scan_id=scan.id) }}" target="_blank" class="btn-outline">
+            <span>📄</span> Export JSON
+        </a>
+        <a href="{{ url_for('index') }}" class="btn-cyber">
+            <span>🔍</span> New Scan
+        </a>
+    </div>
+</div>
+
+<!-- Quick High-Level Metrics -->
+<div class="kv-grid">
+    <div class="kv-item">
+        <div class="kv-label">Target Domain</div>
+        <div class="kv-value text-cyber-blue">{{ scan.domain }}</div>
+    </div>
+    <div class="kv-item">
+        <div class="kv-label">Primary IPv4</div>
+        <div class="kv-value text-neon-green">
+            {{ scan.primary_ip }}
+            <button class="btn-copy" data-copy="{{ scan.primary_ip }}" title="Copy IP">📋</button>
+        </div>
+    </div>
+    <div class="kv-item">
+        <div class="kv-label">Sponsoring Registrar</div>
+        <div class="kv-value">{{ scan.whois_data.registrar if scan.whois_data and scan.whois_data.registrar else 'N/A' }}</div>
+    </div>
+    <div class="kv-item">
+        <div class="kv-label">Hosting / ISP</div>
+        <div class="kv-value">
+            {% if scan.ip_data and scan.ip_data.geo and scan.ip_data.geo.isp %}
+                {{ scan.ip_data.geo.isp }}
+            {% else %}
+                Cloud / Enterprise Network
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- SECTION 1: IP Address Lookup Feature       -->
+<!-- ========================================== -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <span class="text-cyber-blue">01 //</span> IP Address & Network Intelligence
+        </h2>
+        <span class="badge badge-blue">Socket & PTR Analysis</span>
+    </div>
+
+    {% if scan.ip_data and scan.ip_data.status == 'success' %}
+    <div class="table-responsive">
+        <table class="cyber-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Intelligence Field</th>
+                    <th>Discovered Value</th>
+                    <th style="width: 20%;">Security Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Primary Resolved IP</strong></td>
+                    <td class="mono text-neon-green">
+                        {{ scan.ip_data.primary_ip }}
+                        <button class="btn-copy" data-copy="{{ scan.ip_data.primary_ip }}" title="Copy to clipboard">📋</button>
+                    </td>
+                    <td><span class="badge badge-blue">IPv4 Address</span></td>
+                </tr>
+                <tr>
+                    <td><strong>All Discovered IPs</strong></td>
+                    <td class="mono">
+                        {% if scan.ip_data.all_ips %}
+                            {% for ip in scan.ip_data.all_ips %}
+                                <span style="display: inline-block; margin-right: 0.75rem; background: #080c14; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    {{ ip }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            {{ scan.ip_data.primary_ip }}
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-blue">Cluster / Anycast</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Canonical Hostname</strong></td>
+                    <td class="mono">{{ scan.ip_data.canonical_hostname or 'N/A' }}</td>
+                    <td><span class="text-muted">DNS CNAME / A</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Reverse DNS Pointer (PTR)</strong></td>
+                    <td class="mono text-cyber-blue">{{ scan.ip_data.reverse_dns or 'No PTR Record' }}</td>
+                    <td><span class="text-muted">In-Addr.Arpa Pointer</span></td>
+                </tr>
+                {% if scan.ip_data.geo and scan.ip_data.geo.country %}
+                <tr>
+                    <td><strong>Geographic Location</strong></td>
+                    <td>
+                        {{ scan.ip_data.geo.city }}{% if scan.ip_data.geo.city %}, {% endif %}
+                        {{ scan.ip_data.geo.region }}{% if scan.ip_data.geo.region %}, {% endif %}
+                        <strong>{{ scan.ip_data.geo.country }}</strong>
+                    </td>
+                    <td><span class="text-muted">GeoIP Geolocation</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Network / ISP / ASN</strong></td>
+                    <td>
+                        <span class="mono text-muted">{{ scan.ip_data.geo.asn or 'N/A' }}</span> &bull; 
+                        <span>{{ scan.ip_data.geo.isp or 'N/A' }}</span>
+                        {% if scan.ip_data.geo.org and scan.ip_data.geo.org != scan.ip_data.geo.isp %}
+                            <small class="text-muted">({{ scan.ip_data.geo.org }})</small>
+                        {% endif %}
+                    </td>
+                    <td><span class="text-muted">BGP Autonomous System</span></td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        <strong>IP Resolution Error:</strong> {{ scan.ip_data.error or 'Failed to resolve host IP address.' }}
+    </div>
+    {% endif %}
+</section>
+
+<!-- ========================================== -->
+<!-- SECTION 2: DNS Records Lookup Feature      -->
+<!-- ========================================== -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <span class="text-neon-green">02 //</span> DNS Records Lookup
+        </h2>
+        <span class="badge badge-success">
+            {{ scan.dns_data.total_found if scan.dns_data else 0 }} Records Discovered
+        </span>
+    </div>
+
+    {% if scan.dns_data and scan.dns_data.records %}
+    <div class="table-responsive">
+        <table class="cyber-table">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Type</th>
+                    <th style="width: 25%;">Host / Name</th>
+                    <th style="width: 12%;">TTL (s)</th>
+                    <th>Value / Target Record</th>
+                    <th style="width: 8%; text-align: center;">Copy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in scan.dns_data.records %}
+                <tr>
+                    <td>
+                        <span class="badge {% if record.type == 'A' %}badge-blue{% elif record.type == 'MX' %}badge-warning{% elif record.type == 'NS' %}badge-success{% else %}badge-blue{% endif %}">
+                            {{ record.type }}
+                        </span>
+                    </td>
+                    <td class="mono text-muted">{{ record.name }}</td>
+                    <td class="mono text-dim">{{ record.ttl }}</td>
+                    <td class="mono" style="word-break: break-all;">{{ record.value }}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-copy" data-copy="{{ record.value }}" title="Copy Record Value">📋</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <strong>No DNS Records:</strong> 
+        {% if scan.dns_data and scan.dns_data.errors %}
+            {{ scan.dns_data.errors | join(', ') }}
+        {% else %}
+            No authoritative DNS records were returned for this target.
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<!-- ========================================== -->
+<!-- SECTION 3: WHOIS Information Feature       -->
+<!-- ========================================== -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <span class="text-cyber-blue">03 //</span> WHOIS Registration Intelligence
+        </h2>
+        <span class="badge badge-blue">Registry OSINT</span>
+    </div>
+
+    {% if scan.whois_data and scan.whois_data.status == 'success' %}
+    <div class="table-responsive">
+        <table class="cyber-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Registry Attribute</th>
+                    <th>Dossier Record</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Sponsoring Registrar</strong></td>
+                    <td class="mono text-cyber-blue">{{ scan.whois_data.registrar }}</td>
+                </tr>
+                <tr>
+                    <td><strong>WHOIS Server</strong></td>
+                    <td class="mono text-muted">{{ scan.whois_data.whois_server }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Creation / Registration Date</strong></td>
+                    <td class="mono text-neon-green">{{ scan.whois_data.creation_date }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Expiration / Renewal Date</strong></td>
+                    <td class="mono">{{ scan.whois_data.expiration_date }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Last Updated Date</strong></td>
+                    <td class="mono text-muted">{{ scan.whois_data.updated_date }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Delegated Name Servers</strong></td>
+                    <td class="mono">
+                        {% if scan.whois_data.name_servers and scan.whois_data.name_servers != 'N/A' %}
+                            <ul style="list-style: none; padding-left: 0;">
+                                {% for ns in scan.whois_data.name_servers %}
+                                    <li style="margin-bottom: 0.25rem;">&bull; {{ ns }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Domain Status Codes</strong></td>
+                    <td class="mono text-muted" style="font-size: 0.85rem;">
+                        {% if scan.whois_data.domain_status and scan.whois_data.domain_status != 'N/A' %}
+                            {% for st in scan.whois_data.domain_status %}
+                                <div style="margin-bottom: 0.2rem;">&rsaquo; {{ st }}</div>
+                            {% endfor %}
+                        {% else %}
+                            Active / Normal
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Registrant Country & Org</strong></td>
+                    <td>
+                        {{ scan.whois_data.org or 'N/A' }} 
+                        {% if scan.whois_data.country and scan.whois_data.country != 'N/A' %}
+                            ({{ scan.whois_data.country }})
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if scan.whois_data.emails and scan.whois_data.emails != 'N/A' %}
+                <tr>
+                    <td><strong>Contact Emails</strong></td>
+                    <td class="mono text-muted">{{ scan.whois_data.emails | join(', ') if scan.whois_data.emails is iterable and scan.whois_data.emails is not string else scan.whois_data.emails }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <strong>WHOIS Notice:</strong> {{ scan.whois_data.error or 'WHOIS data could not be retrieved or is protected.' }}
+    </div>
+    {% endif %}
+</section>
+
+<!-- Collapsible Raw JSON Intelligence Drawer -->
+<details class="panel" style="cursor: pointer;">
+    <summary style="font-weight: 600; color: var(--color-primary); font-size: 1rem; outline: none;">
+        📦 View Complete Raw JSON Intelligence Dossier (For Lab Submission / API Integration)
+    </summary>
+    <div style="margin-top: 1.25rem;">
+        <pre class="mono" style="background: #06090f; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; font-size: 0.82rem; overflow-x: auto; color: #a5f3fc; max-height: 400px; overflow-y: auto;">{{ scan | tojson(indent=2) }}</pre>
+    </div>
+</details>
+
+<div style="display: flex; justify-content: space-between; margin-bottom: 3rem;">
+    <a href="{{ url_for('history') }}" class="btn-outline">&larr; Back to Scan Database</a>
+    <a href="{{ url_for('index') }}" class="btn-cyber">Scan Another Domain &rarr;</a>
+</div>
+
+{% endblock %}
