@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Scan History & Database | Reconnaissance Information Organizer{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding-top: 2rem; padding-bottom: 1.5rem; text-align: left;">
+    <div class="hero-tag">SQLite Persistent Storage</div>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Reconnaissance Audit Log</h1>
+            <p class="text-muted" style="max-width: 600px;">
+                Historical record of all domain queries, resolved IP addresses, and reconnaissance scans stored in the local SQLite database.
+            </p>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn-cyber">
+            <span>+</span> New Domain Scan
+        </a>
+    </div>
+</section>
+
+<!-- Filter & Search Controls -->
+<div class="panel" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="position: relative; flex: 1; max-width: 450px;">
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-dim);">🔎</span>
+            <input 
+                type="text" 
+                id="history-search" 
+                class="search-input" 
+                style="padding-left: 2.5rem; padding-top: 0.6rem; padding-bottom: 0.6rem; font-size: 0.95rem;" 
+                placeholder="Filter by domain or IP address..."
+            >
+        </div>
+        <div class="mono text-muted" style="font-size: 0.88rem;">
+            Total Scans Logged: <strong class="text-cyber-blue">{{ scans|length }}</strong>
+        </div>
+    </div>
+</div>
+
+<!-- History Table Panel -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <span class="text-cyber-blue">///</span> Stored Target Profiles
+        </h2>
+        <span class="badge badge-blue">Database: recon_data.db</span>
+    </div>
+
+    {% if scans %}
+    <div class="table-responsive">
+        <table class="cyber-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">ID</th>
+                    <th style="width: 25%;">Target Domain</th>
+                    <th style="width: 20%;">Primary IP</th>
+                    <th style="width: 20%;">Timestamp</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 15%; text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in scans %}
+                <tr class="history-row" data-domain="{{ item.domain }}" data-ip="{{ item.primary_ip }}">
+                    <td class="mono text-dim">#{{ item.id }}</td>
+                    <td class="mono">
+                        <a href="{{ url_for('results', scan_id=item.id) }}" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+                            {{ item.domain }}
+                        </a>
+                    </td>
+                    <td class="mono">
+                        {% if item.primary_ip and item.primary_ip != 'N/A' %}
+                            {{ item.primary_ip }}
+                            <button class="btn-copy" data-copy="{{ item.primary_ip }}" title="Copy IP">📋</button>
+                        {% else %}
+                            <span class="text-dim">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="mono text-muted" style="font-size: 0.85rem;">{{ item.scan_date }}</td>
+                    <td>
+                        <span class="badge {% if item.status == 'Success' %}badge-success{% elif item.status == 'Partial' %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: inline-flex; gap: 0.4rem;">
+                            <a href="{{ url_for('results', scan_id=item.id) }}" class="btn-outline btn-sm" title="View organized results">
+                                Inspect
+                            </a>
+                            <form action="{{ url_for('delete_record', scan_id=item.id) }}" method="POST" onsubmit="return confirm('Delete scan record #{{ item.id }} for {{ item.domain }}?');" style="display: inline;">
+                                <button type="submit" class="btn-outline btn-sm btn-danger" title="Delete record">
+                                    &times;
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem 1rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 1rem;">📭</div>
+        <h3 style="margin-bottom: 0.5rem;">No Scans in SQLite Database</h3>
+        <p class="text-muted" style="max-width: 480px; margin: 0 auto 1.5rem;">
+            You have not executed any reconnaissance scans yet. Return to the scanner dashboard to query your first target.
+        </p>
+        <a href="{{ url_for('index') }}" class="btn-cyber">Launch Scanner &rarr;</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
