@@ -45,3 +45,71 @@ def init_db():
     conn.close()
 
 
+def save_scan(domain, ip_data, dns_data, whois_data, status='Success', primary_ip=None):
+    """
+    Saves a completed reconnaissance scan into the SQLite database.
+    Serializes the dictionary data into JSON strings for clean storage.
+    Returns the newly created scan ID.
+    """
+    if primary_ip is None and isinstance(ip_data, dict):
+        primary_ip = ip_data.get('primary_ip', 'N/A')
+
+    # Format timestamp nicely (e.g. 2026-11-02 23:15:00)
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        INSERT INTO scans (domain, scan_date, primary_ip, status, ip_data, dns_data, whois_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        domain,
+        current_time,
+        str(primary_ip),
+        status,
+        json.dumps(ip_data),
+        json.dumps(dns_data),
+        json.dumps(whois_data)
+    ))
+
+    scan_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return scan_id
+
+
+def get_all_scans():
+    """Retrieves all scans ordered by most recent first."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, domain, scan_date, primary_ip, status
+        FROM scans
+        ORDER BY id DESC
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Convert to list of standard dictionaries
+    return [dict(row) for row in rows]
+
+
+def get_recent_scans(limit=5):
+    """Retrieves the most recent scans up to the given limit."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, domain, scan_date, primary_ip, status
+        FROM scans
+        ORDER BY id DESC
+        LIMIT ?
+    ''', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
