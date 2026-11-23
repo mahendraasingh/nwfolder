@@ -1,4 +1,4 @@
-﻿/**
+/**
  * main.js - Client-Side Interactivity for Reconnaissance Information Organizer
  * 
  * Handles:
@@ -98,3 +98,78 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.innerHTML = originalText;
                         btn.classList.remove('text-neon-green');
                     }, 1800);
+                }).catch(err => {
+                    console.error('Copy failed:', err);
+                });
+            }
+        });
+    });
+
+    // 4. Live Search Filter for History Table
+    const historySearch = document.getElementById('history-search');
+    const historyRows = document.querySelectorAll('.history-row');
+
+    if (historySearch && historyRows.length > 0) {
+        historySearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            historyRows.forEach(row => {
+                const domain = row.getAttribute('data-domain') || '';
+                const ip = row.getAttribute('data-ip') || '';
+                if (domain.toLowerCase().includes(query) || ip.toLowerCase().includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // 5. Quick Lookup Tool Tabs and AJAX calls
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            if (content) content.classList.add('active');
+        });
+    });
+
+});
+
+// Helper for standalone Quick Lookup page
+async function runQuickLookup(type) {
+    const input = document.getElementById(`quick-${type}-input`);
+    const btn = document.getElementById(`quick-${type}-btn`);
+    const resultBox = document.getElementById(`quick-${type}-result`);
+
+    if (!input || !input.value.trim()) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Querying...';
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = '<div class="text-cyber-blue mono">[*] Querying target...</div>';
+
+    try {
+        const response = await fetch('/api/quick-lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, domain: input.value.trim() })
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            resultBox.innerHTML = `<pre class="mono" style="color: #00ff9d; font-size: 0.85rem; max-height: 350px; overflow-y: auto;">${JSON.stringify(data.data, null, 2)}</pre>`;
+        } else {
+            resultBox.innerHTML = `<div class="text-danger mono">[-] Error: ${data.error || 'Query failed'}</div>`;
+        }
+    } catch (err) {
+        resultBox.innerHTML = `<div class="text-danger mono">[-] Network Error: ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Query';
+    }
+}
