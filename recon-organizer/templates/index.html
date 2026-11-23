@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard & Scanner | Reconnaissance Information Organizer{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-tag">OSINT Reconnaissance Suite</div>
+    <h1 class="hero-title">Reconnaissance Information Organizer</h1>
+    <p class="hero-subtitle">
+        A centralized cybersecurity tool to collect, analyze, and organize domain intelligence, IP resolutions, DNS records, and WHOIS registration data.
+    </p>
+
+    <!-- Domain Search Bar Card -->
+    <div class="search-card">
+        <form id="scan-form" action="{{ url_for('scan') }}" method="POST" class="search-form">
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    id="domain-input" 
+                    name="domain" 
+                    class="search-input" 
+                    placeholder="Enter target domain (e.g., example.com, github.com)..." 
+                    autocomplete="off"
+                    required
+                >
+            </div>
+            <button type="submit" id="scan-btn" class="btn-cyber">
+                <span>Initiate Recon</span>
+                <span>⚡</span>
+            </button>
+        </form>
+
+        <div class="search-hints">
+            <span>Quick Targets:</span>
+            <span class="hint-chip" data-domain="example.com">example.com</span>
+            <span class="hint-chip" data-domain="python.org">python.org</span>
+            <span class="hint-chip" data-domain="wikipedia.org">wikipedia.org</span>
+        </div>
+
+        <!-- Terminal Simulation Loader -->
+        <div id="terminal-loader" class="terminal-loader">
+            <div class="terminal-header">
+                <span class="terminal-dot dot-red"></span>
+                <span class="terminal-dot dot-yellow"></span>
+                <span class="terminal-dot dot-green"></span>
+                <span style="margin-left: 0.5rem;">recon-daemon ~ passive-osint-query</span>
+            </div>
+            <div id="terminal-body" class="terminal-body">
+                <!-- Live logs will be appended here -->
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Counters -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div>
+            <div class="stat-value text-cyber-blue">{{ stats.total_scans }}</div>
+            <div class="stat-label">Total Scans Executed</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">🎯</div>
+        <div>
+            <div class="stat-value text-neon-green">{{ stats.unique_domains }}</div>
+            <div class="stat-label">Unique Targets Analyzed</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">💾</div>
+        <div>
+            <div class="stat-value" style="font-size: 1.25rem; color: #c084fc;">SQLite Connected</div>
+            <div class="stat-label">Last: {{ stats.last_scan if stats.last_scan != 'None' else 'No scans yet' }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Reconnaissance Modules Overview -->
+<section class="features-section">
+    <h2 class="section-title">
+        <span class="text-cyber-blue">///</span> Core Reconnaissance Capabilities
+    </h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-header">
+                <span class="feature-badge">MODULE 01</span>
+                <h3>IP Address Lookup</h3>
+            </div>
+            <p class="feature-desc">
+                Resolves target domains to all associated IPv4 addresses, retrieves reverse DNS (PTR) pointers, canonical hostnames, and geographic routing metadata.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <span class="feature-badge">MODULE 02</span>
+                <h3>DNS Records Lookup</h3>
+            </div>
+            <p class="feature-desc">
+                Interrogates authoritative DNS nameservers for zone records including A, AAAA, MX (Mail Exchangers), NS (Nameservers), TXT (SPF/DMARC), and SOA records.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <span class="feature-badge">MODULE 03</span>
+                <h3>WHOIS Registry Data</h3>
+            </div>
+            <p class="feature-desc">
+                Queries top-level registries to inspect domain ownership timeline, sponsoring registrar, creation dates, expiration dates, domain statuses, and nameservers.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <span class="feature-badge">MODULE 04</span>
+                <h3>SQLite Intelligence Log</h3>
+            </div>
+            <p class="feature-desc">
+                Maintains a structured persistent database of previous searches, enabling retrospective analysis, trend comparisons, and raw JSON intelligence export.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Scans Preview -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <span class="text-neon-green">///</span> Recent Target Intelligence
+        </h2>
+        <a href="{{ url_for('history') }}" class="btn-outline btn-sm">View Full Database &rarr;</a>
+    </div>
+
+    {% if recent_scans %}
+    <div class="table-responsive">
+        <table class="cyber-table">
+            <thead>
+                <tr>
+                    <th>Scan ID</th>
+                    <th>Target Domain</th>
+                    <th>Primary IP</th>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in recent_scans %}
+                <tr>
+                    <td class="mono text-muted">#{{ item.id }}</td>
+                    <td class="mono"><strong class="text-cyber-blue">{{ item.domain }}</strong></td>
+                    <td class="mono">{{ item.primary_ip }}</td>
+                    <td class="mono text-muted">{{ item.scan_date }}</td>
+                    <td>
+                        <span class="badge {% if item.status == 'Success' %}badge-success{% elif item.status == 'Partial' %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('results', scan_id=item.id) }}" class="btn-outline btn-sm">Inspect Dossier</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No previous reconnaissance scans recorded.</p>
+        <p class="mono text-dim" style="font-size: 0.85rem;">Enter a domain above (e.g., example.com) to initiate your first scan.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
