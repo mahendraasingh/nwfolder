@@ -1,4 +1,4 @@
-﻿"""
+"""
 app.py - Main Flask Web Application for Reconnaissance Information Organizer
 
 A beginner-friendly Cyber Security Reconnaissance web application.
@@ -115,3 +115,77 @@ def results(scan_id):
     return render_template('results.html', scan=scan_data)
 
 
+@app.route('/history')
+def history():
+    """
+    History Dashboard: Lists all saved reconnaissance searches from SQLite
+    with options to inspect results or delete records.
+    """
+    all_scans = database.get_all_scans()
+    stats = database.get_dashboard_stats()
+    return render_template('history.html', scans=all_scans, stats=stats)
+
+
+@app.route('/delete/<int:scan_id>', methods=['POST'])
+def delete_record(scan_id):
+    """
+    Deletes a scan entry from the SQLite database.
+    """
+    deleted = database.delete_scan(scan_id)
+    if deleted:
+        flash(f"Scan #{scan_id} deleted successfully.", 'info')
+    else:
+        flash(f"Failed to delete scan #{scan_id}.", 'danger')
+
+    return redirect(url_for('history'))
+
+
+@app.route('/export/<int:scan_id>')
+def export_scan(scan_id):
+    """
+    Exports the stored scan data in raw JSON format for reporting or verification.
+    """
+    scan_data = database.get_scan_by_id(scan_id)
+    if not scan_data:
+        return jsonify({'error': 'Scan not found'}), 404
+
+    return jsonify(scan_data)
+
+
+@app.route('/quick-lookup')
+def quick_lookup():
+    """
+    Quick Lookup feature page: Allows testing individual tools (IP only, DNS only, WHOIS only).
+    """
+    return render_template('quick_lookup.html')
+
+
+@app.route('/api/quick-lookup', methods=['POST'])
+def api_quick_lookup():
+    """
+    API endpoint for individual quick lookups (IP, DNS, or WHOIS).
+    """
+    data = request.get_json() or {}
+    lookup_type = data.get('type')
+    raw_domain = data.get('domain', '').strip()
+
+    clean = recon_engine.clean_domain(raw_domain)
+    if not clean:
+        return jsonify({'success': False, 'error': 'Invalid domain format.'}), 400
+
+    if lookup_type == 'ip':
+        res = recon_engine.lookup_ip(clean)
+        return jsonify({'success': True, 'domain': clean, 'type': 'ip', 'data': res})
+    elif lookup_type == 'dns':
+        res = recon_engine.lookup_dns(clean)
+        return jsonify({'success': True, 'domain': clean, 'type': 'dns', 'data': res})
+    elif lookup_type == 'whois':
+        res = recon_engine.lookup_whois(clean)
+        return jsonify({'success': True, 'domain': clean, 'type': 'whois', 'data': res})
+    else:
+        return jsonify({'success': False, 'error': 'Invalid lookup type requested.'}), 400
+
+
+if __name__ == '__main__':
+    # Running locally in debug mode on port 5000
+    app.run(host='127.0.0.1', port=5000, debug=True)
