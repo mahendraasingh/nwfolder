@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Quick Tools & Single Lookups | Reconnaissance Information Organizer{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding-top: 2rem; padding-bottom: 1.5rem; text-align: left;">
+    <div class="hero-tag">Targeted Modules</div>
+    <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Modular Reconnaissance Tools</h1>
+    <p class="text-muted" style="max-width: 650px;">
+        Perform targeted, isolated lookups without logging full dossiers into the database. Test individual reconnaissance capabilities on demand.
+    </p>
+</section>
+
+<!-- Tabs Navigation -->
+<div class="tabs-nav">
+    <button class="tab-btn active" data-target="tab-ip">01. IP Address Lookup</button>
+    <button class="tab-btn" data-target="tab-dns">02. DNS Records Lookup</button>
+    <button class="tab-btn" data-target="tab-whois">03. WHOIS Lookup</button>
+</div>
+
+<!-- TAB 1: IP Address Lookup -->
+<div id="tab-ip" class="tab-content active">
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><span class="text-cyber-blue">///</span> IP Address & Routing Lookup</h2>
+            <span class="badge badge-blue">Socket & Geo Resolution</span>
+        </div>
+        <p class="text-muted" style="margin-bottom: 1.25rem;">
+            Resolves domain names into active IPv4 host addresses, queries PTR records for reverse lookup, and identifies hosting ISPs.
+        </p>
+
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; max-width: 650px;">
+            <input type="text" id="quick-ip-input" class="search-input" placeholder="e.g. example.com or 8.8.8.8" value="example.com">
+            <button id="quick-ip-btn" class="btn-cyber" onclick="runQuickLookup('ip')">Query IP</button>
+        </div>
+
+        <div id="quick-ip-result" style="display: none; background: #080c14; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem;"></div>
+    </div>
+</div>
+
+<!-- TAB 2: DNS Records Lookup -->
+<div id="tab-dns" class="tab-content">
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><span class="text-neon-green">///</span> DNS Records Lookup</h2>
+            <span class="badge badge-success">Zone Records Inspector</span>
+        </div>
+        <p class="text-muted" style="margin-bottom: 1.25rem;">
+            Inspects DNS records for a target domain including A, AAAA, Mail Exchangers (MX), Name Servers (NS), TXT (SPF/DKIM/DMARC), and SOA records.
+        </p>
+
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; max-width: 650px;">
+            <input type="text" id="quick-dns-input" class="search-input" placeholder="e.g. google.com or github.com" value="google.com">
+            <button id="quick-dns-btn" class="btn-cyber" onclick="runQuickLookup('dns')">Query DNS</button>
+        </div>
+
+        <div id="quick-dns-result" style="display: none; background: #080c14; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem;"></div>
+    </div>
+</div>
+
+<!-- TAB 3: WHOIS Lookup -->
+<div id="tab-whois" class="tab-content">
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><span class="text-cyber-blue">///</span> WHOIS Domain Registry Lookup</h2>
+            <span class="badge badge-blue">Registration Intelligence</span>
+        </div>
+        <p class="text-muted" style="margin-bottom: 1.25rem;">
+            Queries global WHOIS databases to extract registrar information, registration timeline, name server delegations, and security status.
+        </p>
+
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; max-width: 650px;">
+            <input type="text" id="quick-whois-input" class="search-input" placeholder="e.g. example.com" value="example.com">
+            <button id="quick-whois-btn" class="btn-cyber" onclick="runQuickLookup('whois')">Query WHOIS</button>
+        </div>
+
+        <div id="quick-whois-result" style="display: none; background: #080c14; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem;"></div>
+    </div>
+</div>
+{% endblock %}
