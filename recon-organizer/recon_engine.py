@@ -129,3 +129,64 @@ def lookup_ip(domain):
     return result
 
 
+def lookup_dns(domain):
+    """
+    Queries common DNS record types for the target domain:
+    A, AAAA, MX, NS, TXT, CNAME, SOA.
+    """
+    record_types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA']
+    records_list = []
+    records_by_type = {rtype: [] for rtype in record_types}
+
+    resolver = dns.resolver.Resolver()
+    # Configure reasonable timeouts so queries don't hang
+    resolver.timeout = 3.0
+    resolver.lifetime = 3.0
+
+    success_count = 0
+    errors = []
+
+    for rtype in record_types:
+        try:
+            answers = resolver.resolve(domain, rtype)
+            for rdata in answers:
+                val = rdata.to_text()
+
+                # Clean up formatting for display
+                if rtype == 'MX':
+                    clean_val = f"Priority {rdata.preference} -> {rdata.exchange.to_text()}"
+                elif rtype == 'TXT':
+                    clean_val = val.strip('"')
+                else:
+                    clean_val = val
+
+                record_item = {
+                    'type': rtype,
+                    'name': domain,
+                    'ttl': answers.rrset.ttl if hasattr(answers, 'rrset') else 'N/A',
+                    'value': clean_val
+                }
+                records_list.append(record_item)
+                records_by_type[rtype].append(clean_val)
+                success_count += 1
+        except dns.resolver.NoAnswer:
+            # Record type doesn't exist for this domain (normal behavior)
+            pass
+        except dns.resolver.NXDOMAIN:
+            errors.append(f"Domain '{domain}' does not exist (NXDOMAIN).")
+            break
+        except dns.resolver.Timeout:
+            errors.append(f"Timeout querying DNS {rtype} records.")
+        except Exception as e:
+            # Suppress individual record query exceptions
+            pass
+
+    return {
+        'status': 'success' if success_count > 0 else ('error' if errors else 'no_records'),
+        'total_found': success_count,
+        'records': records_list,
+        'records_by_type': records_by_type,
+        'errors': errors
+    }
+
+
