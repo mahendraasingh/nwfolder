@@ -1,4 +1,4 @@
-﻿"""
+"""
 recon_engine.py - Core Reconnaissance Engine for Reconnaissance Information Organizer
 
 Contains functions to clean user inputs, resolve IP addresses, query DNS records,
@@ -190,3 +190,111 @@ def lookup_dns(domain):
     }
 
 
+def _format_whois_date(val):
+    """Helper to format whois dates which can be list, datetime, or string."""
+    if not val:
+        return 'N/A'
+    if isinstance(val, list):
+        val = val[0]
+    if isinstance(val, datetime):
+        return val.strftime("%Y-%m-%d %H:%M:%S UTC")
+    return str(val)
+
+
+def _format_whois_list(val):
+    """Helper to format whois fields that might be lists or strings."""
+    if not val:
+        return 'N/A'
+    if isinstance(val, list):
+        # Filter duplicates and None
+        items = [str(x).strip() for x in val if x]
+        return list(dict.fromkeys(items))
+    return [str(val).strip()]
+
+
+def lookup_whois(domain):
+    """
+    Retrieves WHOIS registration information for a domain.
+    Extracts registrar, creation date, expiration date, name servers, and status.
+    """
+    result = {
+        'status': 'success',
+        'registrar': 'N/A',
+        'whois_server': 'N/A',
+        'creation_date': 'N/A',
+        'expiration_date': 'N/A',
+        'updated_date': 'N/A',
+        'name_servers': [],
+        'domain_status': [],
+        'emails': [],
+        'country': 'N/A',
+        'org': 'N/A',
+        'raw_summary': 'N/A',
+        'error': None
+    }
+
+    try:
+        w = whois.whois(domain)
+
+        # In python-whois, w is a dictionary-like object
+        result['registrar'] = str(w.registrar) if w.registrar else 'Not specified'
+        result['whois_server'] = str(w.whois_server) if w.whois_server else 'N/A'
+        result['creation_date'] = _format_whois_date(w.creation_date)
+        result['expiration_date'] = _format_whois_date(w.expiration_date)
+        result['updated_date'] = _format_whois_date(w.updated_date)
+        result['name_servers'] = _format_whois_list(w.name_servers)
+        result['domain_status'] = _format_whois_list(w.status)
+        result['emails'] = _format_whois_list(w.emails)
+        result['country'] = str(w.country) if w.country else 'N/A'
+        result['org'] = str(w.org) if w.org else 'N/A'
+
+    except Exception as e:
+        result['status'] = 'error'
+        result['error'] = f"WHOIS query failed or rate-limited: {str(e)}"
+
+    return result
+
+
+def perform_full_recon(raw_input):
+    """
+    Coordinates the entire reconnaissance pipeline:
+    1. Sanitizes the domain
+    2. Performs IP Lookup
+    3. Performs DNS Records Lookup
+    4. Performs WHOIS Lookup
+    Returns all data structured and ready for storage or display.
+    """
+    clean = clean_domain(raw_input)
+    if not clean:
+        return {
+            'success': False,
+            'error': 'Invalid domain format. Please enter a valid domain (e.g., example.com or github.com).'
+        }
+
+    start_time = datetime.now()
+
+    # Execute all three lookups
+    ip_data = lookup_ip(clean)
+    dns_data = lookup_dns(clean)
+    whois_data = lookup_whois(clean)
+
+    duration = round((datetime.now() - start_time).total_seconds(), 2)
+
+    # Determine overall status
+    if ip_data['status'] == 'error' and dns_data['status'] == 'error':
+        status = 'Failed'
+    elif ip_data['status'] == 'error' or whois_data['status'] == 'error':
+        status = 'Partial'
+    else:
+        status = 'Success'
+
+    return {
+        'success': True,
+        'domain': clean,
+        'scan_timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'duration_seconds': duration,
+        'status': status,
+        'ip_data': ip_data,
+        'dns_data': dns_data,
+        'whois_data': whois_data
+    }
