@@ -1,4 +1,4 @@
-﻿"""
+"""
 database.py - SQLite Database Management for Reconnaissance Information Organizer
 
 This module manages all database operations using Python's built-in sqlite3 library.
@@ -113,3 +113,78 @@ def get_recent_scans(limit=5):
     return [dict(row) for row in rows]
 
 
+def get_scan_by_id(scan_id):
+    """
+    Retrieves full details for a single scan by its primary key ID.
+    Parses stored JSON strings back into Python dictionaries for template rendering.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM scans WHERE id = ?', (scan_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        return None
+
+    scan_dict = dict(row)
+
+    # Safely deserialize the stored JSON structures
+    try:
+        scan_dict['ip_data'] = json.loads(scan_dict.get('ip_data', '{}'))
+    except Exception:
+        scan_dict['ip_data'] = {}
+
+    try:
+        scan_dict['dns_data'] = json.loads(scan_dict.get('dns_data', '{}'))
+    except Exception:
+        scan_dict['dns_data'] = {}
+
+    try:
+        scan_dict['whois_data'] = json.loads(scan_dict.get('whois_data', '{}'))
+    except Exception:
+        scan_dict['whois_data'] = {}
+
+    return scan_dict
+
+
+def delete_scan(scan_id):
+    """Deletes a specific scan record by ID."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('DELETE FROM scans WHERE id = ?', (scan_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
+
+
+def get_dashboard_stats():
+    """Calculates overall statistics for the dashboard/homepage."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT COUNT(*) FROM scans')
+    total_scans = cursor.fetchone()[0]
+
+    cursor.execute('SELECT COUNT(DISTINCT domain) FROM scans')
+    unique_domains = cursor.fetchone()[0]
+
+    cursor.execute('SELECT scan_date FROM scans ORDER BY id DESC LIMIT 1')
+    last_row = cursor.fetchone()
+    last_scan = last_row[0] if last_row else 'None'
+
+    conn.close()
+
+    return {
+        'total_scans': total_scans,
+        'unique_domains': unique_domains,
+        'last_scan': last_scan
+    }
+
+
+# Auto-initialize database on import if it doesn't exist
+if not os.path.exists(DB_FILE):
+    init_db()
